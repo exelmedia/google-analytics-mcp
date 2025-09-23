@@ -194,6 +194,70 @@ async def get_accounts():
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching accounts: {str(e)}")
 
+@app.get("/accounts-debug")
+async def get_accounts_debug():
+    """Debug accounts access with detailed error info"""
+    if not GA_AVAILABLE:
+        return {"error": "Google Analytics libraries not available"}
+    
+    try:
+        from google.auth import default
+        import json
+        
+        # Check credentials info
+        creds_info = {}
+        try:
+            with open('/app/credentials.json', 'r') as f:
+                creds_data = json.load(f)
+                creds_info = {
+                    "type": creds_data.get("type"),
+                    "project_id": creds_data.get("project_id"),
+                    "client_email": creds_data.get("client_email"),
+                    "has_private_key": bool(creds_data.get("private_key"))
+                }
+        except Exception as e:
+            creds_info = {"error": f"Could not read credentials: {str(e)}"}
+        
+        # Try to get default credentials
+        auth_info = {}
+        try:
+            credentials, project = default()
+            auth_info = {
+                "project_from_auth": project,
+                "credentials_type": str(type(credentials))
+            }
+        except Exception as e:
+            auth_info = {"error": f"Auth error: {str(e)}"}
+        
+        # Try to create client and list accounts
+        client_info = {}
+        try:
+            client = AnalyticsAdminServiceClient()
+            client_info["client_created"] = True
+            
+            # Try to list accounts with more details
+            accounts_raw = client.list_accounts()
+            accounts_list = list(accounts_raw)
+            
+            client_info["accounts_count"] = len(accounts_list)
+            client_info["accounts_raw_type"] = str(type(accounts_raw))
+            
+        except Exception as e:
+            client_info = {"error": f"Client error: {str(e)}"}
+        
+        return {
+            "credentials_info": creds_info,
+            "auth_info": auth_info,
+            "client_info": client_info,
+            "environment": {
+                "GOOGLE_APPLICATION_CREDENTIALS": os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"),
+                "GOOGLE_PROJECT_ID": os.environ.get("GOOGLE_PROJECT_ID")
+            }
+        }
+        
+    except Exception as e:
+        return {"error": f"Debug error: {str(e)}"}
+
 @app.post("/report")
 async def run_report(report: ReportRequest):
     """Run Google Analytics report"""
