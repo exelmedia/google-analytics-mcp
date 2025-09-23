@@ -17,12 +17,23 @@ from dotenv import load_dotenv
 # Try to load from .env file (created during build if secrets exist)
 load_dotenv()
 
+# DEBUG: Print all environment variables at startup
+print("=== DEBUG: Environment Variables ===")
+print(f"GOOGLE_PROJECT_ID: {os.environ.get('GOOGLE_PROJECT_ID', 'NOT_SET')}")
+print(f"GOOGLE_CREDENTIALS_BASE64 length: {len(os.environ.get('GOOGLE_CREDENTIALS_BASE64', ''))}")
+print(f"GOOGLE_APPLICATION_CREDENTIALS: {os.environ.get('GOOGLE_APPLICATION_CREDENTIALS', 'NOT_SET')}")
+print(f"PORT: {os.environ.get('PORT', 'NOT_SET')}")
+print("======================================")
+
 # Function to setup credentials from Base64
 def setup_credentials():
     """Setup Google credentials from Base64 environment variable"""
+    print("=== DEBUG: setup_credentials() called ===")
     try:
         credentials_base64 = os.environ.get('GOOGLE_CREDENTIALS_BASE64')
+        print(f"credentials_base64 length: {len(credentials_base64) if credentials_base64 else 0}")
         if not credentials_base64:
+            print("ERROR: GOOGLE_CREDENTIALS_BASE64 not found in environment")
             return False, "GOOGLE_CREDENTIALS_BASE64 not set"
         
         # Create /app directory if it doesn't exist
@@ -42,12 +53,16 @@ def setup_credentials():
         with open(credentials_path, 'r') as f:
             json.load(f)  # This will raise exception if invalid JSON
         
+        print("SUCCESS: Credentials file created and validated")
         return True, "Credentials successfully set up"
     except Exception as e:
+        print(f"ERROR in setup_credentials: {str(e)}")
         return False, f"Error setting up credentials: {str(e)}"
 
 # Setup credentials at startup
+print("=== DEBUG: Calling setup_credentials ===")
 CREDS_SUCCESS, CREDS_MESSAGE = setup_credentials()
+print(f"=== DEBUG: setup_credentials result: {CREDS_SUCCESS}, {CREDS_MESSAGE} ===")
 
 # Import Google Analytics libraries
 try:
