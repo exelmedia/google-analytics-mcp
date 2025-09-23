@@ -386,6 +386,82 @@ async def get_custom_dimensions_and_metrics(property_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching custom dimensions and metrics: {str(e)}")
 
+# ===== ADDITIONAL ENDPOINTS =====
+@app.get("/properties")
+async def list_all_properties():
+    """List all available properties across all accounts - MCP Tool: list_properties"""
+    if not GA_AVAILABLE:
+        raise HTTPException(status_code=500, detail="Google Analytics libraries not available")
+    
+    try:
+        client = AnalyticsAdminServiceClient()
+        
+        # Get all accounts first
+        accounts = list(client.list_accounts())
+        
+        all_properties = []
+        for account in accounts:
+            try:
+                # List properties for each account
+                properties = list(client.list_properties(parent=account.name))
+                
+                for prop in properties:
+                    property_id = prop.name.split('/')[-1] if prop.name else 'unknown'
+                    
+                    all_properties.append({
+                        "property_id": property_id,
+                        "name": prop.name,
+                        "display_name": prop.display_name,
+                        "account_name": account.display_name,
+                        "account_id": account.name,
+                        "website_url": getattr(prop, 'website_url', ''),
+                        "time_zone": getattr(prop, 'time_zone', ''),
+                        "currency_code": getattr(prop, 'currency_code', ''),
+                        "create_time": str(prop.create_time) if hasattr(prop, 'create_time') and prop.create_time else None,
+                        "property_type": str(getattr(prop, 'property_type', 'STANDARD'))
+                    })
+                    
+            except Exception as e:
+                print(f"Error fetching properties for account {account.name}: {e}")
+                continue
+        
+        return {
+            "properties": all_properties,
+            "total_count": len(all_properties)
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching properties: {str(e)}")
+
+@app.get("/properties/summary")
+async def get_properties_summary():
+    """Quick summary of available properties with just ID and name"""
+    if not GA_AVAILABLE:
+        raise HTTPException(status_code=500, detail="Google Analytics libraries not available")
+    
+    try:
+        client = AnalyticsAdminServiceClient()
+        accounts = list(client.list_accounts())
+        
+        summary = []
+        for account in accounts:
+            try:
+                properties = list(client.list_properties(parent=account.name))
+                for prop in properties:
+                    property_id = prop.name.split('/')[-1] if prop.name else 'unknown'
+                    summary.append({
+                        "property_id": property_id,
+                        "display_name": prop.display_name,
+                        "account": account.display_name
+                    })
+            except Exception as e:
+                continue
+                
+        return {"properties": summary}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
 # ===== DEBUG ENDPOINTS =====
 @app.get("/test")
 async def test_endpoint():
@@ -404,7 +480,9 @@ async def test_endpoint():
             "GET /ads-links/{property_id} - list_google_ads_links",
             "POST /report - run_report",
             "POST /realtime-report/{property_id} - run_realtime_report",
-            "GET /custom-dimensions-metrics/{property_id} - get_custom_dimensions_and_metrics"
+            "GET /custom-dimensions-metrics/{property_id} - get_custom_dimensions_and_metrics",
+            "GET /properties - list_all_properties",
+            "GET /properties/summary - get_properties_summary"
         ]
     }
 
