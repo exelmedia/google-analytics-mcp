@@ -11,6 +11,39 @@ import uvicorn
 import os
 from typing import Optional, List
 import json
+import base64
+
+# Function to setup credentials from Base64
+def setup_credentials():
+    """Setup Google credentials from Base64 environment variable"""
+    try:
+        credentials_base64 = os.environ.get('GOOGLE_CREDENTIALS_BASE64')
+        if not credentials_base64:
+            return False, "GOOGLE_CREDENTIALS_BASE64 not set"
+        
+        # Create /app directory if it doesn't exist
+        os.makedirs('/app', exist_ok=True)
+        
+        # Decode Base64 and write to file
+        credentials_data = base64.b64decode(credentials_base64)
+        credentials_path = '/app/credentials.json'
+        
+        with open(credentials_path, 'wb') as f:
+            f.write(credentials_data)
+        
+        # Set environment variable for Google client libraries
+        os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = credentials_path
+        
+        # Verify the JSON is valid
+        with open(credentials_path, 'r') as f:
+            json.load(f)  # This will raise exception if invalid JSON
+        
+        return True, "Credentials successfully set up"
+    except Exception as e:
+        return False, f"Error setting up credentials: {str(e)}"
+
+# Setup credentials at startup
+CREDS_SUCCESS, CREDS_MESSAGE = setup_credentials()
 
 # Import Google Analytics libraries
 try:
@@ -57,7 +90,8 @@ async def root():
         "version": "1.0.0",
         "status": "running",
         "ga_available": GA_AVAILABLE,
-        "credentials_set": bool(os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"))
+        "credentials_set": CREDS_SUCCESS,
+        "credentials_message": CREDS_MESSAGE
     }
 
 @app.get("/health")
@@ -77,9 +111,45 @@ async def test_endpoint():
         "environment": {
             "GOOGLE_APPLICATION_CREDENTIALS": bool(os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")),
             "GOOGLE_PROJECT_ID": os.environ.get("GOOGLE_PROJECT_ID", "not_set"),
+            "GOOGLE_CREDENTIALS_BASE64": bool(os.environ.get("GOOGLE_CREDENTIALS_BASE64")),
             "PORT": os.environ.get("PORT", "9000")
         }
     }
+
+@app.get("/debug")
+async def debug_endpoint():
+    """Debug endpoint for credentials"""
+    try:
+        creds_path = '/app/credentials.json'
+        file_exists = os.path.exists(creds_path)
+        file_size = os.path.getsize(creds_path) if file_exists else 0
+        
+        # Try to read first few characters
+        first_chars = ""
+        if file_exists:
+            try:
+                with open(creds_path, 'r') as f:
+                    first_chars = f.read(50)
+            except:
+                first_chars = "(read error)"
+        
+        return {
+            "credentials_setup": {
+                "success": CREDS_SUCCESS,
+                "message": CREDS_MESSAGE
+            },
+            "file_status": {
+                "exists": file_exists,
+                "size": file_size,
+                "first_chars": first_chars
+            },
+            "environment": {
+                "GOOGLE_APPLICATION_CREDENTIALS": os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"),
+                "GOOGLE_CREDENTIALS_BASE64_LENGTH": len(os.environ.get("GOOGLE_CREDENTIALS_BASE64", ""))
+            }
+        }
+    except Exception as e:
+        return {"error": str(e)}
 
 @app.get("/accounts")
 async def get_accounts():
