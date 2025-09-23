@@ -12,6 +12,10 @@ import os
 from typing import Optional, List
 import json
 import base64
+from dotenv import load_dotenv
+
+# Try to load from .env file (created during build if secrets exist)
+load_dotenv()
 
 # Function to setup credentials from Base64
 def setup_credentials():
