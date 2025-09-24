@@ -60,13 +60,24 @@ if not CREDS_SUCCESS:
     print("ERROR: Cannot start MCP server without valid credentials")
     exit(1)
 
-# Now start a simple HTTP server since MCP server needs special setup
-print("=== Starting Simple MCP-Compatible Server ===")
+# Now start the original Google Analytics MCP Server
+print("=== Starting Original Google Analytics MCP Server ===")
 try:
-    # Start a simple HTTP server on port 3000
-    import uvicorn
-    from simple_api import app
-    uvicorn.run(app, host="0.0.0.0", port=3000, log_level="info")
+    print("Starting MCP server...")
+    from analytics_mcp.server import run_server
+    run_server()
+except ImportError as e:
+    print(f"IMPORT ERROR: {e}")
+    print("Available files:")
+    print(os.listdir('.'))
+    
+    # Try alternative - run via command
+    print("Trying to run via command...")
+    import subprocess
+    import sys
+    subprocess.run([sys.executable, "-c", "from analytics_mcp.server import run_server; run_server()"])
 except Exception as e:
-    print(f"ERROR: Server crashed: {e}")
+    print(f"ERROR: MCP Server crashed: {e}")
+    import traceback
+    traceback.print_exc()
     exit(1)
