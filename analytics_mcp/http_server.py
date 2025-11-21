@@ -182,7 +182,7 @@ async def process_mcp_request(request: Dict[str, Any]) -> Dict[str, Any]:
         }
 
 
-def run_http_server(host: str = "0.0.0.0", port: int = 8000):
+def run_http_server(host: str = "0.0.0.0", port: int = 9000):
     """Run the HTTP server."""
     uvicorn.run(app, host=host, port=port)
 
