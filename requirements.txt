@@ -1,8 +1,7 @@
 google-analytics-data==0.18.19
-google-analytics-admin==0.24.1
-google-auth~=2.40
+google-analytics-admin==0.25.0
+google-auth>=2.40,<3.0
 mcp[cli]>=1.2.0
 httpx>=0.28.1
-python-dotenv>=1.0.0
-uvicorn>=0.23.0
-fastapi>=0.104.0
+fastapi>=0.115.0
+uvicorn>=0.32.0
